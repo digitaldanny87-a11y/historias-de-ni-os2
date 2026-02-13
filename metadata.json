@@ -1,0 +1,7 @@
+{
+  "name": "EduBook AI - Diseña tu aventura",
+  "description": "Una aplicación interactiva para generar libros de actividades educativas personalizadas para niños utilizando inteligencia artificial.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
