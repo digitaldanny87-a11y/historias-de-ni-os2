@@ -31,7 +31,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-8 bg-gradient-to-br from-sky-200 via-purple-200 to-pink-200 relative overflow-hidden font-fredoka selection:bg-yellow-300 selection:text-yellow-900">
-      
+
       {/* 1. Colorful Pattern Overlay */}
       <div className="fixed inset-0 z-0 opacity-20 pointer-events-none bg-pattern"></div>
 
@@ -43,7 +43,7 @@ const App: React.FC = () => {
         <div className="absolute bottom-[10%] right-[10%] w-64 h-64 bg-green-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
       </div>
 
-       {/* 3. Floating Emojis Background */}
+      {/* 3. Floating Emojis Background */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none select-none">
         <span className="absolute top-20 left-[5%] text-7xl opacity-40 animate-float-slow hover:opacity-100 transition-opacity duration-500">🎨</span>
         <span className="absolute top-40 right-[10%] text-6xl opacity-40 animate-float-slower delay-1000 hover:opacity-100 transition-opacity duration-500">🚀</span>
@@ -53,15 +53,25 @@ const App: React.FC = () => {
         <span className="absolute bottom-[10%] left-[50%] text-5xl opacity-30 animate-float-slower delay-500 hover:opacity-100 transition-opacity duration-500">🍭</span>
       </div>
 
-      <header className="mb-8 text-center no-print flex flex-col items-center relative z-10">
-         <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 to-pink-500 rounded-[2rem] blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
-            <img 
-              src="https://bvhbrbidsdytynfarlth.supabase.co/storage/v1/object/public/imagenes/edubook-ai.jpg" 
-              alt="Niños explorando y aprendiendo" 
-              className="relative h-48 w-auto rounded-[1.8rem] shadow-xl border-4 border-white transform hover:scale-105 transition-transform duration-300 object-cover bg-white"
-            />
-         </div>
+      <header className="mb-8 text-center no-print flex flex-col md:flex-row justify-center items-center gap-8 relative z-10 w-full px-4">
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 to-pink-500 rounded-[2rem] blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+          <img
+            src="https://bvhbrbidsdytynfarlth.supabase.co/storage/v1/object/public/imagenes/edubook-ai.jpg"
+            alt="Niños explorando y aprendiendo"
+            className="relative h-32 md:h-48 w-auto rounded-[1.8rem] shadow-xl border-4 border-white transform hover:scale-105 transition-transform duration-300 object-cover bg-white"
+          />
+        </div>
+
+        {/* Strategic placement of the requested image */}
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-green-400 to-blue-500 rounded-[2rem] blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+          <img
+            src="/chat-gpt-icon.png"
+            alt="AI Companion"
+            className="relative h-24 md:h-32 w-auto rounded-[1.5rem] shadow-xl border-4 border-white transform hover:scale-105 transition-transform duration-300 object-contain bg-white/90 p-2"
+          />
+        </div>
       </header>
 
       <main className="container mx-auto relative z-10">
@@ -81,28 +91,28 @@ const App: React.FC = () => {
 
       {/* Voice Agent Section - Luka */}
       <section className="container mx-auto mt-8 mb-8 no-print relative z-10">
-         <VoiceAgent />
+        <VoiceAgent />
       </section>
 
       {/* Video Section */}
       <section className="container mx-auto mt-8 mb-8 no-print relative z-10">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white/80 backdrop-blur-lg p-6 md:p-8 rounded-[2.5rem] shadow-2xl border-4 border-white/50 transform rotate-1 hover:rotate-0 transition-transform duration-500">
-             <div className="absolute -top-6 -left-6 bg-yellow-400 text-yellow-900 p-4 rounded-full shadow-lg transform -rotate-12 text-3xl z-20 font-black border-4 border-white">
-                📺
-             </div>
-             <h2 className="text-2xl md:text-3xl font-black text-center text-blue-900 mb-6 flex items-center justify-center gap-3 drop-shadow-sm">
-               Deja volar tu imaginación
-             </h2>
-             <div className="relative rounded-2xl overflow-hidden shadow-inner bg-black aspect-video border-8 border-blue-100">
-                <video 
-                   controls 
-                   className="w-full h-full object-cover"
-                >
-                   <source src="https://bvhbrbidsdytynfarlth.supabase.co/storage/v1/object/public/videos/video%20ninos%20leyendo.mp4" type="video/mp4" />
-                   Tu navegador no soporta el elemento de video.
-                </video>
-             </div>
+            <div className="absolute -top-6 -left-6 bg-yellow-400 text-yellow-900 p-4 rounded-full shadow-lg transform -rotate-12 text-3xl z-20 font-black border-4 border-white">
+              📺
+            </div>
+            <h2 className="text-2xl md:text-3xl font-black text-center text-blue-900 mb-6 flex items-center justify-center gap-3 drop-shadow-sm">
+              Deja volar tu imaginación
+            </h2>
+            <div className="relative rounded-2xl overflow-hidden shadow-inner bg-black aspect-video border-8 border-blue-100">
+              <video
+                controls
+                className="w-full h-full object-cover"
+              >
+                <source src="https://bvhbrbidsdytynfarlth.supabase.co/storage/v1/object/public/videos/video%20ninos%20leyendo.mp4" type="video/mp4" />
+                Tu navegador no soporta el elemento de video.
+              </video>
+            </div>
           </div>
         </div>
       </section>
@@ -110,7 +120,7 @@ const App: React.FC = () => {
       <footer className="mt-12 text-center text-blue-800/60 text-sm no-print font-bold relative z-10">
         <p>✨ Potenciado por Google Gemini API ✨</p>
       </footer>
-      
+
       <style>{`
         .font-fredoka { font-family: 'Fredoka', sans-serif; }
         

@@ -70,7 +70,7 @@ const bookSchema: Schema = {
 // Función auxiliar para generar imagen
 async function generateImage(prompt: string, style: string): Promise<string | undefined> {
   if (!process.env.API_KEY || process.env.API_KEY.length < 10) return undefined;
-
+  
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
@@ -80,7 +80,7 @@ async function generateImage(prompt: string, style: string): Promise<string | un
         ]
       }
     });
-
+    
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
         return part.inlineData.data;
@@ -98,8 +98,8 @@ export const generateBook = async (prefs: UserPreferences): Promise<GeneratedBoo
     throw new Error("API Key no configurada o inválida. Por favor configura VITE_API_KEY o API_KEY en Vercel.");
   }
 
-  const modelId = 'gemini-2.5-flash';
-
+  const modelId = 'gemini-3-flash-preview';
+  
   const prompt = `
     Actúa como experto en literatura infantil e ilustrador.
     Crea un CUENTO ILUSTRADO continuo sobre el tema: "${prefs.topics.join(', ')}".
@@ -157,12 +157,12 @@ export const generateBook = async (prefs: UserPreferences): Promise<GeneratedBoo
     // Promesas Páginas Interiores (Solo para tipo STORY)
     bookData.pages.forEach((page) => {
       if (page.type === ActivityType.STORY && page.imageDescription) {
-        // Añadimos un pequeño delay aleatorio o secuencial si fuera necesario para rate limits,
-        // pero gemini-2.5-flash-image suele manejar bien concurrencia moderada.
-        imagePromises.push(
-          generateImage(page.imageDescription, prefs.visualStyle || 'Cartoon')
-            .then(img => { if (img) page.imageBase64 = img; })
-        );
+         // Añadimos un pequeño delay aleatorio o secuencial si fuera necesario para rate limits,
+         // pero gemini-2.5-flash-image suele manejar bien concurrencia moderada.
+         imagePromises.push(
+            generateImage(page.imageDescription, prefs.visualStyle || 'Cartoon')
+              .then(img => { if (img) page.imageBase64 = img; })
+         );
       }
     });
 
@@ -179,10 +179,10 @@ export const generateBook = async (prefs: UserPreferences): Promise<GeneratedBoo
 
 export const createTopicChatSession = (): Chat => {
   if (!process.env.API_KEY || process.env.API_KEY.length < 10) {
-    throw new Error("API Key missing for Chat");
+      throw new Error("API Key missing for Chat");
   }
   return ai.chats.create({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
     config: {
       temperature: 0.7,
       systemInstruction: `Eres un asistente experto en libros infantiles.`
