@@ -109,7 +109,7 @@ const App: React.FC = () => {
                 controls
                 className="w-full h-full object-cover"
               >
-                <source src="https://bvhbrbidsdytynfarlth.supabase.co/storage/v1/object/public/videos/video%20ninos%20leyendo.mp4" type="video/mp4" />
+                <source src="/nina-leyendo.mp4" type="video/mp4" />
                 Tu navegador no soporta el elemento de video.
               </video>
             </div>
