@@ -63,15 +63,6 @@ const App: React.FC = () => {
           />
         </div>
 
-        {/* Strategic placement of the requested image */}
-        <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-green-400 to-blue-500 rounded-[2rem] blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
-          <img
-            src="/chat-gpt-icon.png"
-            alt="AI Companion"
-            className="relative h-24 md:h-32 w-auto rounded-[1.5rem] shadow-xl border-4 border-white transform hover:scale-105 transition-transform duration-300 object-contain bg-white/90 p-2"
-          />
-        </div>
       </header>
 
       <main className="container mx-auto relative z-10">

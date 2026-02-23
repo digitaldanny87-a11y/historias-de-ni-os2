@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GenerateContentResponse } from "@google/genai";
 import { createTopicChatSession } from '../services/geminiService';
 
 interface Message {
@@ -16,7 +15,7 @@ interface ChatAssistantProps {
 const ChatAssistant: React.FC<ChatAssistantProps> = ({ onAddTopic, selectedTopics }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: '¡Hola! 👋 Soy tu asistente creativo. Cuéntame qué le gusta al niño/a y te ayudaré a elegir temas geniales.' }
+    { role: 'model', text: '¡Hola! 👋 Soy tu asistente creativo. Cuéntame en que te podría ayudar para diseñar tu aventura soñada.' }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +46,7 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onAddTopic, selectedTopic
 
     // Try finding JSON block in markdown
     const jsonBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/i);
-    
+
     if (jsonBlockMatch) {
       try {
         suggestedTopics = JSON.parse(jsonBlockMatch[1]);
@@ -56,19 +55,19 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onAddTopic, selectedTopic
         console.error("Failed to parse topics JSON block", e);
       }
     } else {
-        // Fallback: Try finding a raw array pattern like ["topic1", "topic2"]
-        const rawArrayMatch = text.match(/\[\s*".*"\s*(?:,\s*".*"\s*)*\]/);
-        if (rawArrayMatch) {
-            try {
-                suggestedTopics = JSON.parse(rawArrayMatch[0]);
-                // We keep the text as is if it's mixed, or remove the array if it's at the end
-                cleanText = text.replace(rawArrayMatch[0], '').trim();
-            } catch (e) {
-                console.error("Failed to parse raw JSON array", e);
-            }
+      // Fallback: Try finding a raw array pattern like ["topic1", "topic2"]
+      const rawArrayMatch = text.match(/\[\s*".*"\s*(?:,\s*".*"\s*)*\]/);
+      if (rawArrayMatch) {
+        try {
+          suggestedTopics = JSON.parse(rawArrayMatch[0]);
+          // We keep the text as is if it's mixed, or remove the array if it's at the end
+          cleanText = text.replace(rawArrayMatch[0], '').trim();
+        } catch (e) {
+          console.error("Failed to parse raw JSON array", e);
         }
+      }
     }
-    
+
     return { cleanText, suggestedTopics };
   };
 
@@ -82,11 +81,11 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onAddTopic, selectedTopic
 
     try {
       if (!chatSessionRef.current) {
-         chatSessionRef.current = createTopicChatSession();
+        chatSessionRef.current = createTopicChatSession();
       }
-      
-      const result: GenerateContentResponse = await chatSessionRef.current.sendMessage({ message: userMsg });
-      const rawText = result.text || "";
+
+      const result = await chatSessionRef.current.sendMessage({ parts: [{ text: userMsg }] });
+      const rawText = result.response.text() || "";
       const { cleanText, suggestedTopics } = parseResponse(rawText);
 
       setMessages(prev => [...prev, {
@@ -109,10 +108,9 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onAddTopic, selectedTopic
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none">
       {/* Chat Window */}
-      <div 
-        className={`bg-white w-80 md:w-96 rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all duration-300 pointer-events-auto border border-blue-100 ${
-          isOpen ? 'opacity-100 translate-y-0 h-[500px]' : 'opacity-0 translate-y-10 h-0 overflow-hidden'
-        }`}
+      <div
+        className={`bg-white w-80 md:w-96 rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all duration-300 pointer-events-auto border border-blue-100 ${isOpen ? 'opacity-100 translate-y-0 h-[500px]' : 'opacity-0 translate-y-10 h-0 overflow-hidden'
+          }`}
       >
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 flex justify-between items-center text-white">
           <div className="flex items-center gap-2">
@@ -127,16 +125,15 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onAddTopic, selectedTopic
         <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4">
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div 
-                className={`max-w-[85%] px-4 py-2 rounded-2xl text-sm ${
-                  msg.role === 'user' 
-                    ? 'bg-blue-600 text-white rounded-tr-none' 
-                    : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-tl-none'
-                }`}
+              <div
+                className={`max-w-[85%] px-4 py-2 rounded-2xl text-sm ${msg.role === 'user'
+                  ? 'bg-blue-600 text-white rounded-tr-none'
+                  : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-tl-none'
+                  }`}
               >
                 {msg.text}
               </div>
-              
+
               {/* Suggested Topics Buttons */}
               {msg.suggestedTopics && msg.suggestedTopics.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -147,11 +144,10 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onAddTopic, selectedTopic
                         key={tIdx}
                         onClick={() => !isSelected && onAddTopic(topic)}
                         disabled={isSelected}
-                        className={`text-xs px-3 py-1 rounded-full border transition-all flex items-center gap-1 ${
-                          isSelected
-                            ? 'bg-green-100 border-green-300 text-green-700 cursor-default'
-                            : 'bg-white border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-400'
-                        }`}
+                        className={`text-xs px-3 py-1 rounded-full border transition-all flex items-center gap-1 ${isSelected
+                          ? 'bg-green-100 border-green-300 text-green-700 cursor-default'
+                          : 'bg-white border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-400'
+                          }`}
                       >
                         {isSelected ? '✓ Añadido' : `+ ${topic}`}
                       </button>
@@ -162,11 +158,11 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onAddTopic, selectedTopic
             </div>
           ))}
           {isLoading && (
-             <div className="flex items-center gap-1 text-gray-400 text-xs ml-2">
-               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75"></span>
-               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150"></span>
-             </div>
+            <div className="flex items-center gap-1 text-gray-400 text-xs ml-2">
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75"></span>
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150"></span>
+            </div>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -193,9 +189,8 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onAddTopic, selectedTopic
       {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`mt-4 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-3xl transition-transform hover:scale-110 pointer-events-auto ${
-            isOpen ? 'bg-gray-200 text-gray-600 rotate-90' : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white animate-bounce'
-        }`}
+        className={`mt-4 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-3xl transition-transform hover:scale-110 pointer-events-auto ${isOpen ? 'bg-gray-200 text-gray-600 rotate-90' : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white animate-bounce'
+          }`}
       >
         {isOpen ? '✕' : '✨'}
       </button>

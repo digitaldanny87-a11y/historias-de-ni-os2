@@ -2,7 +2,8 @@ import { GoogleGenAI, Type, Schema, Chat } from "@google/genai";
 import { GeneratedBook, UserPreferences, ActivityType } from "../types";
 
 // Initialize AI client safely.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = (import.meta as any).env.VITE_API_KEY;
+const ai = new GoogleGenAI({ apiKey });
 
 const bookSchema: Schema = {
   type: Type.OBJECT,
@@ -68,25 +69,19 @@ const bookSchema: Schema = {
 };
 
 // Función auxiliar para generar imagen
+// Función auxiliar para generar imagen usando Pollinations AI
 async function generateImage(prompt: string, style: string): Promise<string | undefined> {
-  if (!process.env.API_KEY || process.env.API_KEY.length < 10) return undefined;
-  
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [
-          { text: `Ilustración infantil, estilo ${style}. Escena: ${prompt}. Alta calidad, colores vibrantes, sin texto.` }
-        ]
-      }
-    });
-    
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return part.inlineData.data;
-      }
-    }
-    return undefined;
+    const encodedPrompt = encodeURIComponent(`${prompt}, ${style} style, high quality, vibrant colors, for children's book`);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
+
+    // Fetch image and convert to Base64 to maintain consistency with existing structure
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    const buffer = await blob.arrayBuffer();
+    const base64 = btoa(new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+
+    return base64;
   } catch (error) {
     console.error("Error generating image:", error);
     return undefined;
@@ -94,12 +89,12 @@ async function generateImage(prompt: string, style: string): Promise<string | un
 }
 
 export const generateBook = async (prefs: UserPreferences): Promise<GeneratedBook> => {
-  if (!process.env.API_KEY || process.env.API_KEY.length < 10) {
-    throw new Error("API Key no configurada o inválida. Por favor configura VITE_API_KEY o API_KEY en Vercel.");
+  if (!apiKey || apiKey.length < 10) {
+    throw new Error("API Key no configurada o inválida. Por favor configura VITE_API_KEY en tu archivo .env.local");
   }
 
-  const modelId = 'gemini-3-flash-preview';
-  
+  const modelId = 'gemini-1.5-flash';
+
   const prompt = `
     Actúa como experto en literatura infantil e ilustrador.
     Crea un CUENTO ILUSTRADO continuo sobre el tema: "${prefs.topics.join(', ')}".
@@ -129,7 +124,7 @@ export const generateBook = async (prefs: UserPreferences): Promise<GeneratedBoo
     // 1. Generar Texto y Estructura
     const textResponse = await ai.models.generateContent({
       model: modelId,
-      contents: prompt,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "application/json",
         responseSchema: bookSchema,
@@ -157,12 +152,12 @@ export const generateBook = async (prefs: UserPreferences): Promise<GeneratedBoo
     // Promesas Páginas Interiores (Solo para tipo STORY)
     bookData.pages.forEach((page) => {
       if (page.type === ActivityType.STORY && page.imageDescription) {
-         // Añadimos un pequeño delay aleatorio o secuencial si fuera necesario para rate limits,
-         // pero gemini-2.5-flash-image suele manejar bien concurrencia moderada.
-         imagePromises.push(
-            generateImage(page.imageDescription, prefs.visualStyle || 'Cartoon')
-              .then(img => { if (img) page.imageBase64 = img; })
-         );
+        // Añadimos un pequeño delay aleatorio o secuencial si fuera necesario para rate limits,
+        // pero gemini-2.5-flash-image suele manejar bien concurrencia moderada.
+        imagePromises.push(
+          generateImage(page.imageDescription, prefs.visualStyle || 'Cartoon')
+            .then(img => { if (img) page.imageBase64 = img; })
+        );
       }
     });
 
@@ -178,14 +173,15 @@ export const generateBook = async (prefs: UserPreferences): Promise<GeneratedBoo
 };
 
 export const createTopicChatSession = (): Chat => {
-  if (!process.env.API_KEY || process.env.API_KEY.length < 10) {
-      throw new Error("API Key missing for Chat");
+  if (!apiKey || apiKey.length < 10) {
+    throw new Error("API Key missing for Chat");
   }
   return ai.chats.create({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-2.5-flash',
+    history: [],
     config: {
       temperature: 0.7,
-      systemInstruction: `Eres un asistente experto en libros infantiles.`
+      systemInstruction: { role: 'system', parts: [{ text: `Eres un asistente experto en libros infantiles.` }] }
     }
   });
 };
