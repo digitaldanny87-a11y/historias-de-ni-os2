@@ -1,0 +1,1 @@
+{"root":["./app.tsx","./index.tsx","./list-models.ts","./types.ts","./verify-book.ts","./vite.config.ts","./components/activityrenderer.tsx","./components/bookviewer.tsx","./components/chatassistant.tsx","./components/setupform.tsx","./components/voiceagent.tsx","./services/geminiservice.ts"],"version":"5.9.3"}

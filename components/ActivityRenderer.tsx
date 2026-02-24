@@ -66,6 +66,13 @@ const ActivityRenderer: React.FC<ActivityRendererProps> = ({ page }) => {
               <h2 className="text-2xl md:text-4xl font-black text-blue-900 leading-tight">
                 {page.title}
               </h2>
+              <button
+                onClick={() => speakText(page.content)}
+                className={`float-right ml-4 mb-2 w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-2xl md:text-3xl shadow-lg border-4 transition-all hover:scale-110 ${isSpeaking ? 'bg-red-100 border-red-400 animate-pulse' : 'bg-yellow-100 border-yellow-400'}`}
+                title={isSpeaking ? "Detener lectura" : "Leer en voz alta"}
+              >
+                {isSpeaking ? '🤫' : '🗣️'}
+              </button>
               <p className="text-lg md:text-xl leading-relaxed text-blue-800/80 font-medium whitespace-pre-line">
                 {page.content}
               </p>

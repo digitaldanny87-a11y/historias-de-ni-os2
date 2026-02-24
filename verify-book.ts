@@ -1,6 +1,5 @@
-
 import { generateBook } from "./services/geminiService";
-import { UserPreferences, ActivityType } from "./types";
+import { UserPreferences } from "./types";
 
 // Mock environment for Vite
 (globalThis as any).import = {
@@ -13,10 +12,13 @@ import { UserPreferences, ActivityType } from "./types";
 
 const mockPrefs: UserPreferences = {
     childName: "Test",
-    age: "5",
+    age: 5,
     topics: ["Dinosaurios"],
     learningGoal: "Amistad",
-    visualStyle: "Cartoon"
+    difficulty: 'Medio',
+    setting: '',
+    visualStyle: "Cartoon",
+    coverIdea: ''
 };
 
 async function testGenerate() {
