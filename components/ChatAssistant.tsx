@@ -84,8 +84,8 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ onAddTopic, selectedTopic
         chatSessionRef.current = createTopicChatSession();
       }
 
-      const result = await chatSessionRef.current.sendMessage({ parts: [{ text: userMsg }] });
-      const rawText = result.response.text() || "";
+      const result = await chatSessionRef.current.sendMessage({ message: userMsg });
+      const rawText = result.text || "";
       const { cleanText, suggestedTopics } = parseResponse(rawText);
 
       setMessages(prev => [...prev, {

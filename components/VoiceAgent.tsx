@@ -80,32 +80,33 @@ const VoiceAgent: React.FC = () => {
   const startCall = async () => {
     setError(null);
     try {
-      if (!process.env.API_KEY) throw new Error("API Key missing");
+      const apiKey = (import.meta as any).env.VITE_API_KEY;
+      if (!apiKey) throw new Error("API Key missing");
 
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
+      const ai = new GoogleGenAI({ apiKey });
+
       // 1. Setup Audio Contexts
       // Input: 16kHz required by Gemini
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       // Output: 24kHz required by Gemini
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      
+
       inputContextRef.current = inputCtx;
       outputContextRef.current = outputCtx;
-      
+
       // 2. Get Microphone Stream
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
       // 3. Connect to Gemini Live
       const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        model: 'gemini-2.5-flash-native-audio-latest',
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: { 
+            voiceConfig: {
               // 'Puck' is often a good male voice. Others: 'Charon', 'Fenrir', 'Zephyr'.
-              prebuiltVoiceConfig: { voiceName: 'Puck' } 
+              prebuiltVoiceConfig: { voiceName: 'Puck' }
             },
           },
           systemInstruction: `
@@ -121,11 +122,11 @@ const VoiceAgent: React.FC = () => {
           onopen: () => {
             setIsConnected(true);
             console.log("Conexión con Luka establecida");
-            
+
             // Setup Audio Processing ONLY after connection is open
             const source = inputCtx.createMediaStreamSource(stream);
             const processor = inputCtx.createScriptProcessor(4096, 1, 1);
-            
+
             sourceRef.current = source;
             processorRef.current = processor;
 
@@ -134,7 +135,7 @@ const VoiceAgent: React.FC = () => {
 
               const inputData = e.inputBuffer.getChannelData(0);
               const pcmBlob = createBlob(inputData);
-              
+
               sessionPromise.then((session) => {
                 session.sendRealtimeInput({ media: pcmBlob });
               });
@@ -146,7 +147,7 @@ const VoiceAgent: React.FC = () => {
           onmessage: async (message: LiveServerMessage) => {
             // Handle Audio Output
             const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-            
+
             if (base64Audio) {
               setIsTalking(true);
               const ctx = outputContextRef.current;
@@ -165,7 +166,7 @@ const VoiceAgent: React.FC = () => {
               const source = ctx.createBufferSource();
               source.buffer = audioBuffer;
               source.connect(ctx.destination);
-              
+
               source.addEventListener('ended', () => {
                 sourcesRef.current.delete(source);
                 if (sourcesRef.current.size === 0) setIsTalking(false);
@@ -212,10 +213,10 @@ const VoiceAgent: React.FC = () => {
 
     // Close Session
     if (sessionRef.current) {
-        // sessionRef is a Promise, wait for it then close
-        const session = await sessionRef.current;
-        session.close();
-        sessionRef.current = null;
+      // sessionRef is a Promise, wait for it then close
+      const session = await sessionRef.current;
+      session.close();
+      sessionRef.current = null;
     }
 
     // Stop Microphone
@@ -231,7 +232,7 @@ const VoiceAgent: React.FC = () => {
     // Close Contexts
     if (inputContextRef.current) inputContextRef.current.close();
     if (outputContextRef.current) outputContextRef.current.close();
-    
+
     // Clear buffer sources
     sourcesRef.current.forEach(s => s.stop());
     sourcesRef.current.clear();
@@ -245,100 +246,100 @@ const VoiceAgent: React.FC = () => {
     <div className="bg-white rounded-[2.5rem] shadow-xl border-4 border-slate-100 overflow-hidden relative max-w-sm mx-auto my-8">
       {/* Header Professional */}
       <div className="bg-slate-800 p-6 flex items-center justify-between">
-         <div className="flex items-center gap-4">
-            <div className="relative">
-               <div className={`w-14 h-14 rounded-full border-2 border-white/20 overflow-hidden bg-slate-600 flex items-center justify-center ${isTalking ? 'ring-4 ring-green-400 transition-all' : ''}`}>
-                  {/* Avatar SVG */}
-                  <svg viewBox="0 0 24 24" fill="none" className="w-10 h-10 text-slate-200" stroke="currentColor" strokeWidth="1.5">
-                     <path d="M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM5 22v-2a7 7 0 0 1 14 0v2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-               </div>
-               {isConnected && (
-                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-800"></div>
-               )}
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div className={`w-14 h-14 rounded-full border-2 border-white/20 overflow-hidden bg-slate-600 flex items-center justify-center ${isTalking ? 'ring-4 ring-green-400 transition-all' : ''}`}>
+              {/* Avatar SVG */}
+              <svg viewBox="0 0 24 24" fill="none" className="w-10 h-10 text-slate-200" stroke="currentColor" strokeWidth="1.5">
+                <path d="M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM5 22v-2a7 7 0 0 1 14 0v2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </div>
-            <div>
-               <h3 className="text-white font-bold text-lg">Luka</h3>
-               <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Agente Educativo</p>
-            </div>
-         </div>
-         {isConnected && (
-             <div className="flex gap-1 items-end h-6">
-                 {/* Fake visualizer bars */}
-                 <div className={`w-1 bg-green-400 rounded-full ${isTalking ? 'animate-pulse h-6' : 'h-2'}`}></div>
-                 <div className={`w-1 bg-green-400 rounded-full ${isTalking ? 'animate-pulse h-4 delay-75' : 'h-2'}`}></div>
-                 <div className={`w-1 bg-green-400 rounded-full ${isTalking ? 'animate-pulse h-5 delay-150' : 'h-2'}`}></div>
-             </div>
-         )}
+            {isConnected && (
+              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-800"></div>
+            )}
+          </div>
+          <div>
+            <h3 className="text-white font-bold text-lg">Luka</h3>
+            <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Agente Educativo</p>
+          </div>
+        </div>
+        {isConnected && (
+          <div className="flex gap-1 items-end h-6">
+            {/* Fake visualizer bars */}
+            <div className={`w-1 bg-green-400 rounded-full ${isTalking ? 'animate-pulse h-6' : 'h-2'}`}></div>
+            <div className={`w-1 bg-green-400 rounded-full ${isTalking ? 'animate-pulse h-4 delay-75' : 'h-2'}`}></div>
+            <div className={`w-1 bg-green-400 rounded-full ${isTalking ? 'animate-pulse h-5 delay-150' : 'h-2'}`}></div>
+          </div>
+        )}
       </div>
 
       {/* Body / Status */}
       <div className="p-8 text-center bg-slate-50 min-h-[200px] flex flex-col items-center justify-center">
-         {error ? (
-             <div className="text-red-500 font-medium bg-red-50 px-4 py-2 rounded-lg text-sm">{error}</div>
-         ) : !isConnected ? (
-             <p className="text-slate-500 font-medium">
-                Hola, soy Luka. <br/>¿Necesitas ayuda con tu cuento?
-             </p>
-         ) : (
-             <p className="text-slate-600 font-medium animate-pulse">
-                {isTalking ? "Luka está hablando..." : isMuted ? "Micrófono silenciado" : "Te estoy escuchando..."}
-             </p>
-         )}
-         
-         {!isConnected && (
-             <div className="mt-4 text-4xl text-slate-300">🎙️</div>
-         )}
+        {error ? (
+          <div className="text-red-500 font-medium bg-red-50 px-4 py-2 rounded-lg text-sm">{error}</div>
+        ) : !isConnected ? (
+          <p className="text-slate-500 font-medium">
+            Hola, soy Luka. <br />¿Necesitas ayuda con tu cuento?
+          </p>
+        ) : (
+          <p className="text-slate-600 font-medium animate-pulse">
+            {isTalking ? "Luka está hablando..." : isMuted ? "Micrófono silenciado" : "Te estoy escuchando..."}
+          </p>
+        )}
+
+        {!isConnected && (
+          <div className="mt-4 text-4xl text-slate-300">🎙️</div>
+        )}
       </div>
 
       {/* Controls */}
       <div className="bg-white p-6 border-t border-slate-100 flex items-center justify-center gap-6">
-         {!isConnected ? (
-             <button 
-               onClick={startCall}
-               className="bg-green-600 hover:bg-green-700 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:scale-105 transition-all"
-               title="Iniciar Llamada"
-             >
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+        {!isConnected ? (
+          <button
+            onClick={startCall}
+            className="bg-green-600 hover:bg-green-700 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:scale-105 transition-all"
+            title="Iniciar Llamada"
+          >
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={toggleMute}
+              className={`rounded-full w-14 h-14 flex items-center justify-center border-2 transition-all ${isMuted ? 'bg-slate-200 text-slate-500 border-slate-300' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+              title={isMuted ? "Activar Micrófono" : "Silenciar"}
+            >
+              {isMuted ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                  <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+                  <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
                 </svg>
-             </button>
-         ) : (
-            <>
-               <button 
-                 onClick={toggleMute}
-                 className={`rounded-full w-14 h-14 flex items-center justify-center border-2 transition-all ${isMuted ? 'bg-slate-200 text-slate-500 border-slate-300' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
-                 title={isMuted ? "Activar Micrófono" : "Silenciar"}
-               >
-                  {isMuted ? (
-                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="1" y1="1" x2="23" y2="23"></line>
-                        <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
-                        <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
-                        <line x1="12" y1="19" x2="12" y2="23"></line>
-                        <line x1="8" y1="23" x2="16" y2="23"></line>
-                     </svg>
-                  ) : (
-                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                        <line x1="12" y1="19" x2="12" y2="23"></line>
-                        <line x1="8" y1="23" x2="16" y2="23"></line>
-                     </svg>
-                  )}
-               </button>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              )}
+            </button>
 
-               <button 
-                 onClick={stopCall}
-                 className="bg-red-500 hover:bg-red-600 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:scale-105 transition-all"
-                 title="Colgar"
-               >
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transform rotate-135">
-                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                  </svg>
-               </button>
-            </>
-         )}
+            <button
+              onClick={stopCall}
+              className="bg-red-500 hover:bg-red-600 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:scale-105 transition-all"
+              title="Colgar"
+            >
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transform rotate-135">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+              </svg>
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

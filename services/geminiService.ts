@@ -13,10 +13,11 @@ const bookSchema: Schema = {
       properties: {
         title: { type: Type.STRING, description: "Un título creativo y pegadizo para el libro." },
         subtitle: { type: Type.STRING, description: "Un subtítulo motivador o descriptivo." },
-        visualDescription: { type: Type.STRING, description: "Una descripción detallada (prompt de imagen) para la portada basada en el estilo pedido." },
+        visualDescription: { type: Type.STRING, description: "A DETAILED DESCRIPTION IN ENGLISH (max 15 words) for the cover art. Example: 'A friendly blue dragon reading a magical book in a forest'." },
+        characterAppearance: { type: Type.STRING, description: "A brief description in ENGLISH of the protagonist's appearance to maintain consistency (e.g., 'wearing a red hoodie and blue cap')." },
         colorTheme: { type: Type.STRING, description: "Color hexadecimal principal para la portada." }
       },
-      required: ["title", "subtitle", "visualDescription", "colorTheme"]
+      required: ["title", "subtitle", "visualDescription", "characterAppearance", "colorTheme"]
     },
     pages: {
       type: Type.ARRAY,
@@ -34,7 +35,7 @@ const bookSchema: Schema = {
           title: { type: Type.STRING, description: "Título de la sección o capítulo." },
           content: { type: Type.STRING, description: "El párrafo de la historia para esta página (aprox 40-60 palabras)." },
           hint: { type: Type.STRING, description: "Una pregunta reflexiva pequeña sobre lo que acaba de leer." },
-          imageDescription: { type: Type.STRING, description: "Descripción detallada de la ilustración que representa ESTE párrafo específico." },
+          imageDescription: { type: Type.STRING, description: "A DETAILED DESCRIPTION IN ENGLISH (max 15 words) for the illustration of THIS paragraph. Example: 'The boy finds a hidden treasure map in the attic'." },
           visualElements: {
             type: Type.OBJECT,
             description: "Elementos visuales clave.",
@@ -68,22 +69,27 @@ const bookSchema: Schema = {
   required: ["cover", "pages"]
 };
 
-// Función auxiliar para generar imagen
-// Función auxiliar para generar imagen usando Pollinations AI
 async function generateImage(prompt: string, style: string): Promise<string | undefined> {
   try {
-    const encodedPrompt = encodeURIComponent(`${prompt}, ${style} style, high quality, vibrant colors, for children's book`);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
+    // Prompt optimizado para generación nativa con gemini-2.5-flash-image (Nano Banana)
+    const enhancedPrompt = `High-quality ${style} style children's book illustration. Scene: ${prompt}. Pure art, no text, no labels, vibrant and appealing.`;
 
-    // Fetch image and convert to Base64 to maintain consistency with existing structure
-    const response = await fetch(imageUrl);
-    const blob = await response.blob();
-    const buffer = await blob.arrayBuffer();
-    const base64 = btoa(new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+    const result = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: [{ role: "user", parts: [{ text: enhancedPrompt }] }]
+    });
 
-    return base64;
+    // Extraemos la imagen de la respuesta (inlineData) en el SDK @google/genai
+    const imagePart = result.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+
+    if (imagePart?.inlineData?.data) {
+      return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+    }
+
+    console.error("No image data found in Gemini response");
+    return undefined;
   } catch (error) {
-    console.error("Error generating image:", error);
+    console.error("Error generating native image with gemini-2.5-flash-image:", error);
     return undefined;
   }
 }
@@ -93,7 +99,7 @@ export const generateBook = async (prefs: UserPreferences): Promise<GeneratedBoo
     throw new Error("API Key no configurada o inválida. Por favor configura VITE_API_KEY en tu archivo .env.local");
   }
 
-  const modelId = 'gemini-1.5-flash';
+  const modelId = 'gemini-2.5-flash';
 
   const prompt = `
     Actúa como experto en literatura infantil e ilustrador.
@@ -114,8 +120,10 @@ export const generateBook = async (prefs: UserPreferences): Promise<GeneratedBoo
     REGLAS:
     1. La historia debe tener continuidad (inicio, nudo, desenlace).
     2. Usa el nombre "${prefs.childName}" como protagonista.
-    3. Cada página "STORY" necesita una "imageDescription" única y coherente con el estilo ${prefs.visualStyle}.
-    4. Vocabulario adecuado para ${prefs.age} años.
+    3. MANDATORY: The fields "visualDescription" and "imageDescription" MUST be in ENGLISH, very simple, and CONSIST ONLY OF DESCRIPTIVE NOUNS AND ADJECTIVES (max 8 words). 
+    4. FORBIDDEN: NEVER include proper names like "${prefs.childName}" or "Dany" in image descriptions. Use generic terms like "a child", "the hero", "a small boy", etc.
+    5. Cada página "STORY" necesita una "imageDescription" única y coherente con el estilo ${prefs.visualStyle}.
+    6. Vocabulario adecuado para ${prefs.age} años.
 
     Responde ESTRICTAMENTE en JSON siguiendo el esquema.
   `;
@@ -138,34 +146,30 @@ export const generateBook = async (prefs: UserPreferences): Promise<GeneratedBoo
 
     const bookData = JSON.parse(textResponse.text) as GeneratedBook;
 
-    // 2. Generar Imágenes en Paralelo (Portada + Páginas)
-    const imagePromises: Promise<void>[] = [];
+    // Generamos una semilla única para TODO el libro para mantener consistencia visual
+    const charDesc = bookData.cover.characterAppearance || "";
 
-    // Promesa Portada
+    // 2. Generar Imágenes Secuencialmente (Para evitar bloqueos/rate-limits)
     if (bookData.cover.visualDescription) {
-      imagePromises.push(
-        generateImage(bookData.cover.visualDescription, prefs.visualStyle || 'Cartoon')
-          .then(img => { if (img) bookData.coverImageBase64 = img; })
-      );
+      try {
+        const fullPrompt = `${bookData.cover.visualDescription} ${charDesc}`.trim();
+        const img = await generateImage(fullPrompt, prefs.visualStyle || 'Cartoon');
+        if (img) bookData.coverImageBase64 = img;
+      } catch (e) { console.error("Error en portada:", e); }
     }
 
-    // Promesas Páginas Interiores (Solo para tipo STORY)
-    bookData.pages.forEach((page) => {
+    for (const page of bookData.pages) {
       if (page.type === ActivityType.STORY && page.imageDescription) {
-        // Añadimos un pequeño delay aleatorio o secuencial si fuera necesario para rate limits,
-        // pero gemini-2.5-flash-image suele manejar bien concurrencia moderada.
-        imagePromises.push(
-          generateImage(page.imageDescription, prefs.visualStyle || 'Cartoon')
-            .then(img => { if (img) page.imageBase64 = img; })
-        );
+        try {
+          await new Promise(r => setTimeout(r, 500)); // Delay para estabilidad
+          const fullPrompt = `${page.imageDescription} ${charDesc}`.trim();
+          const img = await generateImage(fullPrompt, prefs.visualStyle || 'Cartoon');
+          if (img) page.imageBase64 = img;
+        } catch (e) { console.error("Error en página:", e); }
       }
-    });
-
-    // Esperar a que todas las imágenes se generen
-    await Promise.all(imagePromises);
+    }
 
     return bookData;
-
   } catch (error) {
     console.error("Error generating book:", error);
     throw error;
@@ -181,7 +185,7 @@ export const createTopicChatSession = (): Chat => {
     history: [],
     config: {
       temperature: 0.7,
-      systemInstruction: { role: 'system', parts: [{ text: `Eres un asistente experto en libros infantiles.` }] }
+      systemInstruction: `Eres un asistente experto en libros infantiles.`
     }
   });
 };

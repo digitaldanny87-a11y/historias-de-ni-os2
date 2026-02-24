@@ -35,6 +35,7 @@ export interface BookCover {
   title: string;
   subtitle: string;
   visualDescription: string; // Describes what the cover illustration looks like
+  characterAppearance?: string; // Consistency helper
   colorTheme: string;
 }
 
